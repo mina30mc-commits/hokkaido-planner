@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>北海道10天9夜 🎀 Complete Safety</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Varela+Round&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'sanrio-pink': '#ffb7c5', 'sanrio-dark-pink': '#ec4899', 'sanrio-blue': '#a0d8ef', 'sanrio-white': '#ffffff', 'sanrio-cream': '#fff9fb',
+                    },
+                    fontFamily: {
+                        'cute': ['"Zen Maru Gothic"', '"Varela Round"', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'cute': '0 4px 15px rgba(255, 183, 197, 0.4)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Zen Maru Gothic', sans-serif; background-color: #fff0f5; -webkit-tap-highlight-color: transparent; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .snap-x-mandatory { scroll-snap-type: x mandatory; }
+        .snap-center { scroll-snap-align: center; }
+        .slide-up-enter-active, .slide-up-leave-active { transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .slide-up-enter-from, .slide-up-leave-to { opacity: 0; transform: translateY(20px); }
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+        .list-enter-active, .list-leave-active { transition: all 0.3s ease; }
+        .list-enter-from, .list-leave-to { opacity: 0; transform: translateX(-20px); }
+        .weather-float { animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-5px); } 100% { transform: translateY(0px); } }
+    </style>
+</head>
+<body class="h-screen overflow-hidden text-slate-600">
+
+    <div id="app" class="h-full flex flex-col max-w-md mx-auto bg-sanrio-cream shadow-2xl relative overflow-hidden">
+        
+        <!-- Header -->
+        <header class="bg-white pt-6 pb-2 px-5 z-20 shadow-sm rounded-b-[2rem] relative">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-700 tracking-wide flex items-center gap-2">
+                        北海道10天9夜 <i class="fa-solid fa-heart text-sanrio-dark-pink text-lg animate-pulse"></i>
+                    </h1>
+                    <div class="flex items-center gap-2 mt-1">
+                        <p class="text-xs text-sanrio-dark-pink font-bold bg-pink-100 inline-block px-2 py-1 rounded-full">
+                            <i class="fa-solid fa-floppy-disk"></i> 自動存檔
+                        </p>
+                        <!-- Countdown Badge -->
+                        <p v-if="daysLeft > 0" class="text-xs text-white font-bold bg-sanrio-blue inline-block px-2 py-1 rounded-full">
+                            還有 {{ daysLeft }} 天
+                        </p>
+                    </div>
+                </div>
+                <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center border-2 border-white shadow-cute">
+                    <span class="text-2xl weather-float">☃️</span>
+                </div>
+            </div>
+
+            <!-- Date Picker (Schedule Only) -->
+            <div v-if="currentTab === 'schedule'" class="flex overflow-x-auto no-scrollbar gap-3 pb-2 snap-x-mandatory scroll-pl-4">
+                <button v-for="(day, index) in itinerary" :key="index" @click="selectDay(index)" class="snap-center flex-shrink-0 flex flex-col items-center justify-center w-14 h-16 rounded-2xl transition-all duration-300 border-2" :class="selectedDayIndex === index ? 'bg-sanrio-dark-pink text-white border-sanrio-dark-pink shadow-cute transform scale-105' : 'bg-white text-slate-400 border-slate-100'">
+                    <span class="text-[10px] font-bold">{{ day.weekday }}</span>
+                    <span class="text-lg font-bold">{{ day.date.split('/')[1] }}</span>
+                </button>
+            </div>
+            
+            <!-- Tools Sub-nav -->
+            <div v-if="currentTab === 'tools'" class="flex gap-2 pb-2">
+                <button @click="toolMode = 'lang'" :class="toolMode === 'lang' ? 'bg-sanrio-blue text-white' : 'bg-slate-100 text-slate-400'" class="flex-1 py-2 rounded-xl text-sm font-bold transition-colors"><i class="fa-solid fa-language mr-1"></i> 日語通</button>
+                <button @click="toolMode = 'check'" :class="toolMode === 'check' ? 'bg-sanrio-blue text-white' : 'bg-slate-100 text-slate-400'" class="flex-1 py-2 rounded-xl text-sm font-bold transition-colors"><i class="fa-solid fa-list-check mr-1"></i> 檢查表</button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto no-scrollbar p-4 pb-24 scroll-smooth bg-gradient-to-b from-sanrio-cream to-blue-50">
+            
+            <!-- Tab: Schedule -->
+            <transition name="slide-up" mode="out-in">
+                <div v-if="currentTab === 'schedule'" :key="selectedDayIndex" class="space-y-4">
+                    <!-- Weather Card -->
+                    <div class="bg-gradient-to-r from-blue-400 to-blue-500 rounded-3xl p-5 shadow-cute relative overflow-hidden text-white">
+                        <div class="absolute -right-4 -top-4 w-24 h-24 bg-white opacity-20 rounded-full blur-xl"></div>
+                        <div class="flex justify-between items-center relative z-10">
+                            <div><h2 class="text-xl font-bold flex items-center gap-2"><i class="fa-solid fa-location-dot text-yellow-300"></i> {{ currentDay.city }}</h2><p class="text-xs opacity-90 mt-1">Day {{ selectedDayIndex + 1 }} • {{ currentDay.title }}</p></div>
+                            <div class="text-right">
+                                <div v-if="loadingWeather" class="animate-pulse flex flex-col items-end"><div class="h-8 w-8 bg-white/30 rounded-full mb-1"></div></div>
+                                <div v-else class="flex flex-col items-end"><div class="text-4xl mb-1 weather-float drop-shadow-md"><i :class="weatherData.icon"></i></div><p class="text-2xl font-bold leading-none">{{ weatherData.temp }}°C</p><p class="text-[10px] opacity-90 bg-white/20 px-2 py-0.5 rounded-full mt-1">{{ weatherData.desc }}</p></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Timeline Spots -->
+                    <div class="space-y-3">
+                        <div v-for="(spot, index) in currentDay.spots" :key="index" class="bg-white rounded-3xl p-4 shadow-sm border border-slate-50 relative overflow-hidden group">
+                            <div class="flex gap-3">
+                                <div class="flex flex-col items-center gap-1 mt-1">
+                                    <div class="w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-inner-cute transition-transform group-hover:scale-110" :class="getIconColor(spot.type)"><i :class="getIcon(spot.type)"></i></div>
+                                    <div v-if="index !== currentDay.spots.length - 1" class="h-full w-0.5 bg-slate-100 my-1 rounded-full"></div>
+                                </div>
+                                <div class="flex-1 pb-2">
+                                    <h3 class="font-bold text-slate-700 text-lg leading-tight">{{ spot.name }}</h3>
+                                    <div class="flex flex-wrap gap-2 my-2" v-if="spot.tags"><span v-for="tag in spot.tags" :key="tag.text" class="text-[10px] px-2 py-0.5 rounded-full font-bold border" :class="getTagClass(tag.type)">{{ tag.text }}</span></div>
+                                    <p v-if="spot.note" class="text-sm text-slate-500 bg-slate-50 p-2 rounded-xl mt-1 leading-relaxed border border-slate-100">{{ spot.note }}</p>
+                                    <a :href="getMapUrl(spot.name)" target="_blank" class="mt-3 w-full bg-blue-50 hover:bg-sanrio-blue hover:text-white text-blue-500 rounded-xl py-2.5 flex items-center justify-center gap-2 font-bold transition-all active:scale-95 shadow-sm border border-blue-100 cursor-pointer no-underline"><i class="fa-solid fa-diamond-turn-right text-lg"></i> GO 導航</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Money -->
+                <div v-else-if="currentTab === 'money'" key="money" class="space-y-4">
+                    <!-- Member Management -->
+                    <div class="bg-white rounded-[2rem] p-5 shadow-sm border border-slate-100">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-bold text-slate-700 text-sm flex items-center gap-2"><i class="fa-solid fa-users text-sanrio-dark-pink"></i> 旅伴管理</h3>
+                            <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded-full">{{ members.length }} 人</span>
+                        </div>
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <div v-for="(member, index) in members" :key="index" class="group flex items-center gap-2 bg-pink-50 text-slate-600 px-3 py-2 rounded-full text-xs font-bold border border-pink-100 hover:border-pink-300">
+                                {{ member }}
+                                <button v-if="member !== '我'" @click="confirmRemoveMember(index)" class="w-5 h-5 flex items-center justify-center rounded-full bg-white text-pink-300 hover:bg-red-400 hover:text-white transition-colors shadow-sm cursor-pointer"><i class="fa-solid fa-xmark text-[10px]"></i></button>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <input type="text" v-model="newMemberName" placeholder="名字..." class="flex-1 bg-slate-50 border-none rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-pink-300 outline-none">
+                            <button @click="addNewMember" class="bg-sanrio-blue hover:bg-blue-300 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm"><i class="fa-solid fa-plus"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Settlements & EXPORT -->
+                    <div class="bg-white rounded-[2rem] p-5 shadow-sm border border-pink-100">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-bold text-slate-700 flex items-center gap-2"><i class="fa-solid fa-wand-magic-sparkles text-yellow-400"></i> 分帳建議</h3>
+                            <!-- Export Button -->
+                            <button @click="exportBill" class="bg-slate-800 text-white text-xs px-3 py-1.5 rounded-lg font-bold hover:bg-slate-700 active:scale-95 transition-transform">
+                                <i class="fa-regular fa-copy mr-1"></i> 複製結算單
+                            </button>
+                        </div>
+                        <div v-if="settlements.length > 0" class="space-y-2">
+                            <div v-for="(s, idx) in settlements" :key="idx" class="flex items-center justify-between text-sm bg-pink-50 p-3 rounded-xl">
+                                <div class="flex items-center gap-2"><span class="font-bold text-slate-600">{{ s.from }}</span><i class="fa-solid fa-heart text-pink-300 text-xs animate-pulse"></i><span class="font-bold text-slate-600">{{ s.to }}</span></div>
+                                <span class="font-bold text-sanrio-dark-pink">NT$ {{ formatNumber(s.amount) }}</span>
+                            </div>
+                        </div>
+                        <div v-else class="text-center text-xs text-slate-400 py-2">大家都結清囉！</div>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-sanrio-dark-pink to-pink-400 rounded-[2rem] p-6 text-white shadow-cute relative overflow-hidden">
+                        <i class="fa-solid fa-piggy-bank absolute -bottom-4 -right-4 text-8xl text-white opacity-20 transform -rotate-12"></i>
+                        <p class="text-sm font-medium opacity-90 mb-1">總花費 (台幣)</p>
+                        <h2 class="text-4xl font-bold tracking-tight">NT$ {{ formatNumber(totalExpenseTWD) }}</h2>
+                        <div class="mt-4 inline-flex items-center bg-white/20 px-3 py-1.5 rounded-full backdrop-blur-sm"><i class="fa-solid fa-user-group text-xs mr-2"></i><span class="text-xs font-bold">每人平均 NT$ {{ formatNumber(averageExpenseTWD) }}</span></div>
+                    </div>
+
+                    <div class="bg-white rounded-[2rem] p-5 shadow-sm border border-pink-100">
+                        <h3 class="font-bold text-slate-700 mb-3 text-sm">記一筆</h3>
+                        <div class="grid grid-cols-2 gap-3 mb-3">
+                            <select v-model="newExpense.payer" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold text-slate-600 outline-none"><option v-for="member in members" :value="member">{{ member }}</option></select>
+                            <input type="number" v-model.number="newExpense.amountJPY" placeholder="¥ JPY" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold outline-none">
+                        </div>
+                        <div v-if="newExpense.amountJPY" class="mb-3 bg-blue-50 rounded-xl p-2 text-center"><p class="text-xs text-slate-500">約 <span class="font-bold text-blue-600 text-lg">NT$ {{ formatNumber(previewTWD) }}</span></p></div>
+                        <input type="text" v-model="newExpense.item" placeholder="項目" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm mb-3 outline-none">
+                        <button @click="addExpense" class="w-full bg-sanrio-blue hover:bg-blue-300 text-white rounded-xl py-3 text-sm font-bold shadow-md"><i class="fa-solid fa-plus"></i> 加入</button>
+                    </div>
+
+                    <div class="space-y-2 pb-8">
+                        <transition-group name="list">
+                            <div v-for="(exp, idx) in expenses" :key="exp.id" class="bg-white px-4 py-3 rounded-2xl flex justify-between items-center shadow-sm">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">{{ exp.payer[0] }}</div>
+                                    <div><p class="font-bold text-slate-700 text-sm">{{ exp.item }}</p><p class="text-[10px] text-slate-400">¥ {{ formatNumber(exp.amountJPY) }}</p></div>
+                                </div>
+                                <div class="flex items-center gap-3"><span class="font-bold text-slate-600 text-sm">NT$ {{ formatNumber(exp.amountTWD) }}</span><button @click="removeExpense(idx)" class="text-pink-200 hover:text-pink-500"><i class="fa-solid fa-xmark"></i></button></div>
+                            </div>
+                        </transition-group>
+                    </div>
+                </div>
+
+                <!-- Tab: Tools -->
+                <div v-else-if="currentTab === 'tools'" key="tools" class="space-y-4">
+                    <div v-if="toolMode === 'lang'" class="grid grid-cols-2 gap-3">
+                        <div v-for="(card, idx) in phrases" :key="idx" @click="speak(card.jp)" class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 active:scale-95 transition-transform cursor-pointer relative overflow-hidden group">
+                            <div class="absolute right-0 top-0 bg-blue-100 px-2 py-1 rounded-bl-xl text-[10px] text-blue-500 font-bold">{{ card.cat }}</div>
+                            <div class="text-center mt-2">
+                                <p class="text-2xl font-bold text-slate-700 mb-1">{{ card.jp }}</p>
+                                <p class="text-xs text-slate-400">{{ card.pronounce }}</p>
+                                <p class="text-sm text-pink-500 font-bold mt-2">{{ card.tw }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else class="space-y-3">
+                        <div class="bg-yellow-50 p-4 rounded-2xl border border-yellow-100 text-yellow-800 text-xs mb-2"><i class="fa-solid fa-lightbulb mr-1"></i> 自動儲存勾選狀態。</div>
+                        <div v-for="(item, idx) in checklist" :key="idx" @click="toggleCheck(idx)" class="bg-white p-4 rounded-2xl shadow-sm border flex items-center justify-between cursor-pointer transition-all" :class="item.checked ? 'border-green-200 bg-green-50 opacity-60' : 'border-slate-100'">
+                            <div class="flex items-center gap-3">
+                                <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors" :class="item.checked ? 'border-green-500 bg-green-500 text-white' : 'border-slate-300 text-transparent'"><i class="fa-solid fa-check text-xs"></i></div>
+                                <span class="font-bold text-slate-700" :class="{'line-through text-slate-400': item.checked}">{{ item.text }}</span>
+                            </div>
+                            <i :class="item.icon" class="text-slate-300"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Info (With Safety & Emergency) -->
+                <div v-else-if="currentTab === 'info'" key="info" class="space-y-5">
+                    
+                    <!-- Hotel -->
+                    <div class="bg-white rounded-[2rem] overflow-hidden shadow-cute">
+                        <div class="bg-blue-400 h-28 relative flex items-center justify-center overflow-hidden">
+                            <i class="fa-solid fa-bed text-6xl text-white opacity-20 absolute"></i><h3 class="relative text-white font-bold text-xl drop-shadow-md">Sun North</h3>
+                        </div>
+                        <div class="p-6 relative">
+                            <button @click="copyAddress" class="absolute -top-6 right-6 bg-sanrio-dark-pink text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center active:scale-90 transition-transform"><i class="fa-solid fa-copy"></i></button>
+                            <p class="text-xs text-slate-400 font-bold mb-1">JP ADDRESS</p>
+                            <p class="text-sm font-medium text-slate-700 leading-relaxed select-all">〒060-0907 北海道札幌市東区北７条東７丁目21-3</p>
+                            <a :href="getMapUrl('Sun North 北海道')" target="_blank" class="mt-5 w-full bg-slate-100 text-slate-600 py-3 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors flex items-center justify-center no-underline"><i class="fa-solid fa-map mr-2"></i> 開啟地圖導航</a>
+                        </div>
+                    </div>
+
+                    <!-- Driving Safety -->
+                    <div class="bg-yellow-50 rounded-[2rem] p-5 border border-yellow-100 relative overflow-hidden">
+                        <i class="fa-solid fa-car-burst absolute -right-2 -bottom-2 text-6xl text-yellow-200 opacity-30 transform -rotate-12"></i>
+                        <h3 class="font-bold text-yellow-700 mb-3 flex items-center gap-2"><i class="fa-solid fa-shield-cat"></i> 雪地自駕 5 大鐵則</h3>
+                        <ul class="text-sm text-yellow-800 space-y-3 pl-1">
+                            <li class="flex gap-2 items-start"><span class="text-lg">🧊</span><div><span class="font-bold">黑冰 (Black Ice)：</span><br><span class="text-xs opacity-80">路面看似濕潤其實是冰！請輕踩煞車。</span></div></li>
+                            <li class="flex gap-2 items-start"><span class="text-lg">🛑</span><div><span class="font-bold">一時停止 (Tomare)：</span><br><span class="text-xs opacity-80">倒三角標誌務必「完全靜止」3秒再開。</span></div></li>
+                            <li class="flex gap-2 items-start"><span class="text-lg">🦌</span><div><span class="font-bold">野生動物：</span><br><span class="text-xs opacity-80">郊區常有蝦夷鹿，看到注意牌請減速。</span></div></li>
+                            <li class="flex gap-2 items-start"><span class="text-lg">💨</span><div><span class="font-bold">白茫天 (Whiteout)：</span><br><span class="text-xs opacity-80">遇大雪視線為零時，請開大燈、閃雙黃燈並低速慢行，切勿急停。</span></div></li>
+                            <li class="flex gap-2 items-start"><span class="text-lg">🆘</span><div><span class="font-bold">車輛陷雪 (Stuck)：</span><br><span class="text-xs opacity-80">切勿猛踩油門！需清除排氣管積雪避免中毒。</span></div></li>
+                        </ul>
+                    </div>
+
+                    <!-- Emergency -->
+                    <div class="bg-red-50 rounded-[2rem] p-5">
+                        <h3 class="font-bold text-red-500 mb-3 text-sm flex items-center gap-2"><i class="fa-solid fa-phone-volume"></i> 日本緊急聯絡</h3>
+                        <div class="grid grid-cols-3 gap-2 mb-4">
+                            <a href="tel:110" class="bg-white py-3 rounded-xl text-center shadow-sm active:scale-95 transition-transform no-underline">
+                                <div class="text-red-500 font-bold text-xl">110</div><div class="text-[10px] text-slate-400 font-bold">警察局</div>
+                            </a>
+                            <a href="tel:119" class="bg-white py-3 rounded-xl text-center shadow-sm active:scale-95 transition-transform no-underline">
+                                <div class="text-red-500 font-bold text-xl">119</div><div class="text-[10px] text-slate-400 font-bold">救護車</div>
+                            </a>
+                            <a href="tel:8139" class="bg-white py-3 rounded-xl text-center shadow-sm active:scale-95 transition-transform no-underline border-2 border-red-100">
+                                <div class="text-red-500 font-bold text-xl">#8139</div><div class="text-[10px] text-slate-400 font-bold">JAF救援</div>
+                            </a>
+                        </div>
+                        <div class="bg-white/60 rounded-xl p-3 text-xs text-red-800">
+                            <p class="font-bold mb-1">🆘 發生車禍處理 SOP</p>
+                            <ol class="list-decimal list-inside space-y-1 opacity-80">
+                                <li>保持冷靜，將車移至安全處。</li>
+                                <li>有傷患先打 119，再打 110 報警。</li>
+                                <li><b>一定要報警拿「事故證明」</b>(保險用)。</li>
+                                <li>聯絡租車公司 (車上通常有文件)。</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+
+            </transition>
+        </main>
+
+        <nav class="absolute bottom-6 left-4 right-4 bg-white/90 backdrop-blur-md h-16 rounded-full shadow-cute flex justify-around items-center z-50 px-2 border border-white/50">
+            <button v-for="tab in tabs" :key="tab.id" @click="currentTab = tab.id" class="relative w-12 h-12 flex items-center justify-center transition-all duration-300">
+                <div class="absolute inset-0 bg-sanrio-dark-pink opacity-10 rounded-full scale-0 transition-transform duration-300" :class="currentTab === tab.id ? 'scale-100' : ''"></div>
+                <i :class="[tab.icon, currentTab === tab.id ? 'text-sanrio-dark-pink text-xl' : 'text-slate-300 text-lg']"></i>
+                <span v-if="currentTab === tab.id" class="absolute -bottom-2 text-[9px] font-bold text-sanrio-dark-pink">{{ tab.name }}</span>
+            </button>
+        </nav>
+
+        <!-- Modal -->
+        <transition name="fade">
+            <div v-if="showModal" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showModal = false"></div>
+                <div class="bg-white rounded-[2rem] p-6 w-full max-w-xs relative z-10 shadow-2xl text-center">
+                    <div class="w-12 h-12 bg-pink-100 text-pink-500 rounded-full flex items-center justify-center mx-auto mb-3 text-xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <h3 class="font-bold text-slate-800 text-lg mb-2">確定要移除嗎？</h3>
+                    <p class="text-sm text-slate-500 mb-6">{{ modalMessage }}</p>
+                    <div class="flex gap-3"><button @click="showModal = false" class="flex-1 py-3 bg-slate-100 text-slate-500 rounded-xl font-bold">取消</button><button @click="executeDelete" class="flex-1 py-3 bg-sanrio-dark-pink text-white rounded-xl font-bold">移除</button></div>
+                </div>
+            </div>
+        </transition>
+
+        <!-- Toast -->
+        <transition name="slide-up">
+            <div v-if="toast.visible" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-[70] bg-slate-800/90 text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-3 backdrop-blur-md">
+                <i :class="toast.icon" class="text-yellow-400"></i><span class="text-sm font-bold">{{ toast.message }}</span>
+            </div>
+        </transition>
+
+    </div>
+
+    <script>
+        const { createApp, ref, computed, reactive, watch, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                // --- STATE ---
+                const currentTab = ref('schedule');
+                const selectedDayIndex = ref(0);
+                const loadingWeather = ref(false);
+                const weatherData = ref({ temp: '--', icon: 'fa-solid fa-minus', desc: 'Loading...' });
+                const toolMode = ref('lang');
+                const showModal = ref(false);
+                const modalMessage = ref('');
+                const deleteIndex = ref(null);
+                const toast = reactive({ visible: false, message: '', icon: 'fa-solid fa-circle-info' });
+                const daysLeft = ref(0);
+
+                const showToast = (msg, icon = 'fa-solid fa-circle-info') => {
+                    toast.message = msg; toast.icon = icon; toast.visible = true;
+                    setTimeout(() => toast.visible = false, 3000);
+                };
+
+                const tabs = [
+                    { id: 'schedule', name: '行程', icon: 'fa-solid fa-heart' },
+                    { id: 'money', name: '錢包', icon: 'fa-solid fa-wallet' },
+                    { id: 'tools', name: '工具', icon: 'fa-solid fa-toolbox' },
+                    { id: 'info', name: '資訊', icon: 'fa-solid fa-circle-info' },
+                ];
+
+                const cities = { 'Sapporo': { lat: 43.0618, lon: 141.3545 }, 'Otaru': { lat: 43.1907, lon: 140.9947 }, 'Biei': { lat: 43.5908, lon: 142.4687 }, 'Asahikawa': { lat: 43.7706, lon: 142.3649 }, 'Jozankei': { lat: 42.9649, lon: 141.1610 }, 'Chitose': { lat: 42.7937, lon: 141.6706 } };
+                const itinerary = [
+                    { date: '1/12', weekday: 'SUN', title: '抵達北海道', city: 'Sapporo', cityKey: 'Sapporo', spots: [{ name: '新千歲機場', type: 'plane' }, { name: '狸小路商店街', type: 'shopping', tags: [{type: 'buy', text: '唐吉訶德'}] }] },
+                    { date: '1/13', weekday: 'MON', title: '浪漫小樽', city: 'Otaru', cityKey: 'Otaru', spots: [{ name: '堺町通商業街', type: 'walk' }, { name: '小樽運河', type: 'camera' }, { name: '藻岩山夜景', type: 'mountain' }] },
+                    { date: '1/14', weekday: 'TUE', title: '美瑛富良野', city: 'Biei', cityKey: 'Biei', spots: [{ name: '白鬚瀑布', type: 'water' }, { name: '青池', type: 'water' }, { name: '美瑛聖誕樹', type: 'tree' }, { name: '精靈露台', type: 'house' }] },
+                    { date: '1/15', weekday: 'WED', title: '旭川動物時光', city: 'Asahikawa', cityKey: 'Asahikawa', spots: [{ name: '旭山動物園', type: 'paw', tags: [{type: 'tip', text: '必看企鵝'}] }, { name: 'Toriton 迴轉壽司', type: 'food' }] },
+                    { date: '1/16', weekday: 'THU', title: '白色戀人', city: 'Sapporo', cityKey: 'Sapporo', spots: [{ name: '北海道神宮', type: 'torii-gate' }, { name: '白色戀人觀光工廠', type: 'cookie' }] },
+                    { date: '1/17', weekday: 'FRI', title: '札幌市區', city: 'Sapporo', cityKey: 'Sapporo', spots: [{ name: '二條市場', type: 'fish' }, { name: '北海道大學', type: 'school' }, { name: '札幌工廠', type: 'building' }] },
+                    { date: '1/18', weekday: 'SAT', title: '定山溪溫泉', city: 'Jozankei', cityKey: 'Jozankei', spots: [{ name: '頭大佛殿', type: 'vihara' }, { name: '定山溪溫泉', type: 'hot-tub-person' }] },
+                    { date: '1/19', weekday: 'SUN', title: '市區休閒', city: 'Sapporo', cityKey: 'Sapporo', spots: [{ name: '狸小路商店街', type: 'shopping' }, { name: '大通公園', type: 'tree' }] },
+                    { date: '1/20', weekday: 'MON', title: '購物衝刺', city: 'Sapporo', cityKey: 'Sapporo', spots: [{ name: '三井 OUTLET PARK', type: 'bag-shopping' }] },
+                    { date: '1/21', weekday: 'TUE', title: '平安返家', city: 'Chitose', cityKey: 'Chitose', spots: [{ name: '新千歲機場', type: 'plane' }] }
+                ];
+                const currentDay = computed(() => itinerary[selectedDayIndex.value]);
+
+                // --- DATA PERSISTENCE (LocalStorage) ---
+                const storageKey = 'hokkaido_trip_v10';
+                const members = ref(['我', '旅伴A', '旅伴B', '旅伴C']);
+                const expenses = ref([{ id: 1, payer: '我', amountJPY: 22727, amountTWD: 5000, item: '租車訂金' }]);
+                const exchangeRate = ref(0.22);
+                const checklist = ref([
+                    { text: '護照', icon: 'fa-solid fa-passport', checked: false },
+                    { text: '台灣駕照', icon: 'fa-solid fa-id-card', checked: false },
+                    { text: '駕照日文譯本', icon: 'fa-solid fa-language', checked: false },
+                    { text: 'ETC 卡 (租車確認)', icon: 'fa-solid fa-car', checked: false },
+                    { text: '雪地防滑鞋套', icon: 'fa-solid fa-snowflake', checked: false },
+                    { text: '墨鏡 (防雪盲)', icon: 'fa-solid fa-glasses', checked: false },
+                    { text: '滋潤型護手霜/護唇膏', icon: 'fa-solid fa-hand-sparkles', checked: false },
+                    { text: '行動電源', icon: 'fa-solid fa-battery-full', checked: false },
+                    { text: '暖暖包 (貼式)', icon: 'fa-solid fa-fire', checked: false },
+                ]);
+
+                // Save Data
+                const saveData = () => {
+                    const data = {
+                        members: members.value,
+                        expenses: expenses.value,
+                        exchangeRate: exchangeRate.value,
+                        checklist: checklist.value
+                    };
+                    localStorage.setItem(storageKey, JSON.stringify(data));
+                };
+
+                // Watchers for Auto-Save
+                watch([members, expenses, exchangeRate, checklist], saveData, { deep: true });
+
+                // Load Data
+                onMounted(() => {
+                    const saved = localStorage.getItem(storageKey);
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            if(parsed.members) members.value = parsed.members;
+                            if(parsed.expenses) expenses.value = parsed.expenses;
+                            if(parsed.exchangeRate) exchangeRate.value = parsed.exchangeRate;
+                            if(parsed.checklist) checklist.value = parsed.checklist;
+                        } catch(e) { console.log('Data reset due to error'); }
+                    }
+                    
+                    // Calc Countdown
+                    const targetDate = new Date('2025-01-12');
+                    const now = new Date();
+                    const diffTime = targetDate - now;
+                    daysLeft.value = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                });
+
+                // --- MONEY LOGIC ---
+                const newMemberName = ref('');
+                const newExpense = reactive({ payer: '我', amountJPY: '', item: '' });
+                const addNewMember = () => { if (newMemberName.value.trim() && !members.value.includes(newMemberName.value.trim())) { members.value.push(newMemberName.value.trim()); newMemberName.value = ''; } };
+                const confirmRemoveMember = (index) => {
+                    const name = members.value[index];
+                    if (expenses.value.some(e => e.payer === name)) { showToast(`${name} 還有付款紀錄，無法移除`, 'fa-solid fa-triangle-exclamation'); return; }
+                    deleteIndex.value = index; modalMessage.value = `旅伴「${name}」將會從名單中移除。`; showModal.value = true;
+                };
+                const executeDelete = () => { if (deleteIndex.value !== null) { members.value.splice(deleteIndex.value, 1); showModal.value = false; showToast('已成功移除旅伴'); } };
+                const previewTWD = computed(() => newExpense.amountJPY ? Math.round(newExpense.amountJPY * exchangeRate.value) : 0);
+                const totalExpenseTWD = computed(() => expenses.value.reduce((sum, i) => sum + i.amountTWD, 0));
+                const averageExpenseTWD = computed(() => members.value.length ? Math.round(totalExpenseTWD.value / members.value.length) : 0);
+                const settlements = computed(() => {
+                    let balances = {}; members.value.forEach(m => balances[m] = -averageExpenseTWD.value);
+                    expenses.value.forEach(exp => { if(balances[exp.payer] !== undefined) balances[exp.payer] += exp.amountTWD; });
+                    let debtors = [], creditors = [];
+                    for (const [name, val] of Object.entries(balances)) { if (val < -1) debtors.push({name, val}); if (val > 1) creditors.push({name, val}); }
+                    debtors.sort((a,b)=>a.val-b.val); creditors.sort((a,b)=>b.val-a.val);
+                    let res = [], i=0, j=0;
+                    while(i<creditors.length && j<debtors.length){
+                        let credit = creditors[i].val, debt = -debtors[j].val, amt = Math.min(credit, debt);
+                        if(amt>0) res.push({from: debtors[j].name, to: creditors[i].name, amount: Math.round(amt)});
+                        creditors[i].val -= amt; debtors[j].val += amt;
+                        if(Math.abs(creditors[i].val)<1) i++; if(Math.abs(debtors[j].val)<1) j++;
+                    }
+                    return res;
+                });
+                const addExpense = () => { 
+                    if(!newExpense.amountJPY || !newExpense.item) return; 
+                    expenses.value.unshift({ id: Date.now(), payer: newExpense.payer, amountJPY: newExpense.amountJPY, amountTWD: Math.round(newExpense.amountJPY * exchangeRate.value), item: newExpense.item }); 
+                    newExpense.amountJPY = ''; newExpense.item = ''; showToast('記帳成功！');
+                };
+                const removeExpense = (i) => expenses.value.splice(i, 1);
+
+                // --- EXPORT FUNCTION ---
+                const exportBill = () => {
+                    let text = `🎀 北海道之旅 結算單 🎀\n\n`;
+                    text += `總花費: NT$ ${formatNumber(totalExpenseTWD.value)}\n`;
+                    text += `每人平均: NT$ ${formatNumber(averageExpenseTWD.value)}\n\n`;
+                    text += `【分帳建議】\n`;
+                    if (settlements.value.length === 0) text += `大家都結清囉！\n`;
+                    else settlements.value.forEach(s => { text += `👉 ${s.from} 給 ${s.to}: $${s.amount}\n`; });
+                    text += `\n此清單由北海道 App 自動產生`;
+                    
+                    navigator.clipboard.writeText(text).then(() => showToast('結算單已複製！請貼到 Line', 'fa-regular fa-clipboard'));
+                };
+
+                // --- WEATHER & OTHERS ---
+                const fetchWeather = async (cityKey) => {
+                    loadingWeather.value = true;
+                    try {
+                        const coords = cities[cityKey];
+                        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current_weather=true`);
+                        const data = await res.json();
+                        const code = data.current_weather.weathercode;
+                        let icon = 'fa-solid fa-cloud', desc = '多雲';
+                        if (code === 0) { icon = 'fa-solid fa-sun'; desc = '晴朗'; } else if ([71,73,75,77,85,86].includes(code)) { icon = 'fa-regular fa-snowflake'; desc = '下雪'; }
+                        weatherData.value = { temp: Math.round(data.current_weather.temperature), icon, desc };
+                    } catch (e) { weatherData.value = { temp: '-2', icon: 'fa-regular fa-snowflake', desc: '預報無法取得' }; }
+                    finally { loadingWeather.value = false; }
+                };
+                watch(selectedDayIndex, (newVal) => { fetchWeather(itinerary[newVal].cityKey); }, { immediate: true });
+                
+                const phrases = [
+                    { jp: 'レギュラー満タン', pronounce: 'Regular Man-tan', tw: '92加滿 (普通汽油)', cat: '加油' },
+                    { jp: 'お会計お願いします', pronounce: 'O-kaikei Onegaishimasu', tw: '我要結帳', cat: '餐廳' },
+                    { jp: '氷なしで', pronounce: 'Koori Nashi de', tw: '請去冰', cat: '飲料' },
+                    { jp: 'トイレはどこですか', pronounce: 'Toire wa doko desuka', tw: '廁所在哪裡', cat: '詢問' },
+                    { jp: 'カード使えますか', pronounce: 'Kaado Tsukaemasuka', tw: '可刷卡嗎', cat: '付款' },
+                    { jp: '駐車禁止', pronounce: 'Chuusha Kinshi', tw: '禁止停車', cat: '交通' }
+                ];
+                const speak = (text) => {
+                    if ('speechSynthesis' in window) {
+                        const utterance = new SpeechSynthesisUtterance(text);
+                        utterance.lang = 'ja-JP'; window.speechSynthesis.speak(utterance);
+                    } else { showToast('不支援發音'); }
+                };
+                
+                const toggleCheck = (idx) => { checklist.value[idx].checked = !checklist.value[idx].checked; };
+                const formatNumber = (n) => new Intl.NumberFormat('en-US').format(n);
+                const getIcon = (t) => { const m={shopping:'fa-bag-shopping',walk:'fa-person-walking',camera:'fa-camera',mountain:'fa-mountain',water:'fa-water',tree:'fa-tree',house:'fa-house-chimney',paw:'fa-paw',food:'fa-utensils','torii-gate':'fa-torii-gate',cookie:'fa-cookie-bite',fish:'fa-fish',school:'fa-graduation-cap',building:'fa-building',vihara:'fa-vihara','hot-tub-person':'fa-hot-tub-person','bag-shopping':'fa-shirt',plane:'fa-plane-departure'}; return 'fa-solid '+(m[t]||'fa-location-dot'); };
+                const getIconColor = (t) => (['food','cookie','fish'].includes(t)?'bg-orange-100 text-orange-400':(['water','tree','mountain'].includes(t)?'bg-green-100 text-green-500':'bg-blue-100 text-blue-500'));
+                const getTagClass = (t) => (t==='eat'?'bg-orange-50 text-orange-500 border-orange-200':(t==='buy'?'bg-pink-50 text-pink-500 border-pink-200':'bg-blue-50 text-blue-500 border-blue-200'));
+                const getMapUrl = (q) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q+' 北海道')}`;
+                const copyAddress = () => navigator.clipboard.writeText("北海道札幌市東区北７条東７丁目21-3").then(()=>showToast('地址已複製 ✨'));
+                const selectDay = (i) => selectedDayIndex.value = i;
+
+                return { currentTab, tabs, itinerary, currentDay, selectedDayIndex, selectDay, members, expenses, newExpense, exchangeRate, previewTWD, totalExpenseTWD, averageExpenseTWD, addExpense, removeExpense, newMemberName, addNewMember, confirmRemoveMember, executeDelete, loadingWeather, weatherData, toolMode, phrases, checklist, toggleCheck, speak, formatNumber, getIcon, getIconColor, getTagClass, getMapUrl, copyAddress, showModal, modalMessage, toast, settlements, exportBill, daysLeft };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
